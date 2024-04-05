@@ -12,8 +12,8 @@ data "azurerm_resource_group" "resource_group" {
 
 resource "azurerm_log_analytics_workspace" "log_analytics" {
   name                = var.log_analytics_name
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
+  location            = data.azurerm_resource_group.resource_group.location
+  resource_group_name = data.azurerm_resource_group.resource_group.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
@@ -47,7 +47,7 @@ resource "azurerm_monitor_data_collection_rule" "dcr" {
 
 resource "azurerm_virtual_machine_extension" "ama_linux" {
   name                       = var.vm_extension.name
-  virtual_machine_id         = module.virtual_machine.virtual_machine.id
+  virtual_machine_id         = azurerm_linux_virtual_machine.linux_vm.id
   publisher                  = var.vm_extension.publisher
   type                       = var.vm_extension.type
   type_handler_version       = var.vm_extension.type_handler_version
@@ -56,7 +56,7 @@ resource "azurerm_virtual_machine_extension" "ama_linux" {
 
 resource "azurerm_monitor_data_collection_rule_association" "dcr_association" {
   name                    = var.monitor_data_collection_rule_association_name
-  target_resource_id      = module.virtual_machine.virtual_machine.id
+  target_resource_id      = azurerm_linux_virtual_machine.linux_vm.id
   data_collection_rule_id = azurerm_monitor_data_collection_rule.dcr.id
   description             = "Association between the Data Collection Rule and the Linux VM."
 }
