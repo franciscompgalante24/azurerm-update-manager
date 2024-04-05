@@ -1,5 +1,5 @@
 output "automation_account_id" {
-  value = azurerm_automation_account.auto_acc.id
+  value = azurerm_automation_account.automation_account.id
 }
 
 output "runbook_id" {
