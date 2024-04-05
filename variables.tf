@@ -65,6 +65,52 @@ variable "linux_vm" {
   })
 }
 
+variable "monitor_data_collection_rule_name" {
+  description = "The name of the monitor data collection rule."
+  type        = string
+}
+
+variable "monitor_data_collection_rule_association_name" {
+  description = "The name of the monitor data collection rule association."
+  type        = string
+}
+
+variable "monitor_destinations_log_analytics" {
+  description = "Configuration for the monitor destination log analytics."
+  type = object({
+    name = string
+  })
+}
+
+variable "monitor_data_flow" {
+  description = "Configuration for the monitor data flow, including streams and destinations."
+  type = object({
+    streams      = list(string)
+    destinations = list(string)
+  })
+}
+
+variable "monitor_data_sources" {
+  description = "Configuration for the monitor data sources, including syslog settings."
+  type = object({
+    syslog = object({
+      name           = string
+      facility_names = list(string)
+      log_levels     = list(string)
+    })
+  })
+}
+
+variable "vm_extension" {
+  description = "Configuration for the VM extension."
+  type = object({
+    name                 = string
+    publisher            = string
+    type                 = string
+    type_handler_version = string
+  })
+}
+
 variable "automation_account_name" {
   description = "Name of the Automation Account"
   type        = string
