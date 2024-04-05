@@ -1,83 +1,75 @@
 # Update Management Center Solution
 
-This Terraform module is intended to implement the Update Management Center (Preview) solution
-for managing automatic system updates for Virtual Machines created in Azure https://learn.microsoft.com/en-us/azure/update-center/overview.
-This approach applies to Virtual Machines created from both custom and marketplace images. It makes use of a PowerShell script that triggers an update assessment and deployment on your Azure Virtual Machines within your Resource Group.
+This Terraform module is intended to implement the Azure Update Manager solution for managing automatic system updates for Azure Virtual Machines https://learn.microsoft.com/en-us/azure/update-center/overview.
 
-## Pre-Requisites
-In order to have this solution working properly, you should make sure that:
-* Your Azure Virtual Machine has the Azure Monitor Agent Extension installed and associated to a monitoring data collection rule.
-This will automatically connect your Azure Virtual Machine to Update Management Center.
+## Benefits
+1. **Automated System Updates**: Facilitates automatic system updates for Azure Virtual Machines, ensuring systems are always up to date with the latest patches and security improvements.
 
-## Installation of Azure Monitor Agent Extension
-The following steps ensure the proper installation of the extension. If you have already the agent installed, you can skip
-to the next section.
+2. **Supports Various VM Images**: Compatible with Virtual Machines created from both custom and marketplace images, providing flexibility in Azure VM deployments.
 
-To install the agent and connect it to a monitoring data collection rule, your configuration file should include the following code: 
+3. **Update Management Automation**: Utilizes a PowerShell script to automate update assessments and deployments, streamlining the update process across Virtual Machines within a Resource Group.
+
+## Module Usage
+### Virtual Network and Virtual Machine
+Create a `terraform.tfvars` file that encompasses configurations for the virtual network and virtual machine. Below is an illustrative example:
+
 ```
-resource "azurerm_monitor_data_collection_rule" "dcr" {
-  name                = var.monitor_data_collection_rule_name
-  resource_group_name = data.azurerm_resource_group.resource_group.name
-  location            = data.azurerm_resource_group.resource_group.location
-  kind                = var.monitor_data_collection_rule_kind
+vnet = {
+  name          = "vnet"
+  address_space = ["10.0.0.0/16"]
+}
 
-  destinations {
-    log_analytics {
-      name                  = var.monitor_destinations_log_analytics.name
-      workspace_resource_id = module.log_analytics.log_analytics.id
-    }
-  }
+subnet = {
+  name              = "subnet"
+  address_prefixes  = ["10.0.2.0/24"]
+  service_endpoints = ["Microsoft.Sql", "Microsoft.Storage"]
+}
 
-  data_flow {
-    streams      = var.monitor_data_flow.streams
-    destinations = var.monitor_data_flow.destinations
-  }
-
-  data_sources {
-    syslog {
-      name           = var.monitor_data_sources.syslog.name
-      facility_names = var.monitor_data_sources.syslog.facility_names
-      log_levels     = var.monitor_data_sources.syslog.log_levels
-    }
+nic = {
+  name = "nic"
+  ip_configuration = {
+    name                          = "linux_vm_nic"
+    private_ip_address_allocation = "Dynamic"
   }
 }
 
-resource "azurerm_virtual_machine_extension" "ama_linux" {
-  name                       = var.vm_extension.name
-  virtual_machine_id         = module.virtual_machine.virtual_machine.id
-  publisher                  = var.vm_extension.publisher
-  type                       = var.vm_extension.type
-  type_handler_version       = var.vm_extension.type_handler_version
-  auto_upgrade_minor_version = true
-}
-
-resource "azurerm_monitor_data_collection_rule_association" "dcr_association" {
-  name                    = var.monitor_data_collection_rule_association_name
-  target_resource_id      = module.virtual_machine.virtual_machine.id
-  data_collection_rule_id = azurerm_monitor_data_collection_rule.dcr.id
-  description             = "Association between the Data Collection Rule and the Linux VM."
+linux_vm = {
+  name           = "linux_vm"
+  size           = "Standard_D2s_v3"
+  admin_username = "adminuser"
+  os_disk = {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+  source_image_reference = {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
+  }
 }
 ```
 
-Here is an example of a `terraform.tfvars` file:
+### Installation of Azure Monitor Agent Extension
+The following steps ensure the proper installation of the extension. To install the agent and connect it to a monitoring data collection rule, your `terraform.tfvars` file should also include the following main configurations as in this example: 
 
 ```
 monitor_data_collection_rule_name = "dcr_linux"
 
-monitor_data_collection_rule_association_name = "dcr-vm-association"
+monitor_data_collection_rule_association_name = "dcr-linux-vm-association"
 
 monitor_destinations_log_analytics = {
-  name = "destination-log-sandbox"
+  name = "destination-logs"
 }
 
 monitor_data_flow = {
   streams      = ["Microsoft-Syslog"]
-  destinations = ["destination-log-sandbox"]
+  destinations = ["destination-logs"]
 }
 
 monitor_data_sources = {
   syslog = {
-    name = "syslog-sandbox"
+    name = "syslogs"
     facility_names = ["auth", "authpriv", "cron", "daemon", "mark", "kern",
       "local0", "local1", "local2", "local3", "local4", "local5",
     "local6", "local7", "lpr", "mail", "news", "syslog", "user", "uucp"]
@@ -93,30 +85,15 @@ vm_extension = {
 }
 ```
 
-Please note that you should have:
-* An Azure Virtual Machine https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_virtual_machine
-* A Log Analytics Workspace https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/log_analytics_workspace
-
-## Example of Module Usage
-
+### Update Center (Automation Account)
+Finally, here is an example of the configurations for the automation account that executes the script to perform the update assessment and deployment on your Azure Virtual Machine within your Resource Group.
 ```
-module "update-management-center-custom" {
+automation_account_name = "automation-account-updates"
 
-// Include Module
-source = "https://code.siemens.com/secure-cloud-ops/code/terraform/azure/update-management-center-custom"
-
-// Main Parameters
-resource_group_name = "rg-terraform-sandbox"
-
-location = "West Europe"
-
-// Update Management Center (Preview) Parameters
-automation_account_name = "automation-account-updates-sandbox"
-
-automation_runbook_name = "vm-linux-updates-runbook-sandbox"
+automation_runbook_name = "linux-vm-updates-runbook"
 
 automation_schedule = {
-  name        = "automation-schedule-vm-linux-updates-sandbox"
+  name        = "automatic-linux-vm-updates-schedule"
   description = "Run on Mondays and Wednesdays"
   frequency   = "Week"
   interval    = 1
@@ -124,19 +101,6 @@ automation_schedule = {
   week_days   = ["Monday", "Wednesday"]
 }
 ```
-
-## Parameters
-
-In the following table are presented the required parameters for this module:
-
-| Name                    | Default                              | Description                                          |
-|-------------------------|--------------------------------------|------------------------------------------------------|
-| resource_group_name     | -                                    | Name of the Resource Group                           |
-| location                | data.azurerm_resource_group.location | Azure Location of the Resource Group                 |
-| automation_account_name | -                                    | Name of the Automation Account                       |
-| automation_runbook_name | -                                    | Name of the Automation Runbook that installs updates |
-| automation_schedule     | -                                    | Details about the Automation Schedule                |
-
 
 ## Notes and Possible Errors
 
@@ -168,24 +132,14 @@ Following these steps you should be able to successfully assess and update your 
 
 However, if you encounter any errors, I strongly recommend examining the logs within your VM for further insights.
 
-## Azure Services and Resources used
-
-* Azure Virtual Machine
-* Azure Monitor Agent Linux Extension
-* Azure Automation Account
-* Azure Automation Runbook
-* Azure Automation Schedule
-
 ## References
 
-* https://learn.microsoft.com/en-us/azure/update-center/overview?tabs=azure-vms
-* https://learn.microsoft.com/en-us/azure/update-center/manage-vms-programmatically?tabs=cli%2Crest
-* https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/automation_runbook
-
-## License
-
-Siemens Inner Source License v1.3
+* [Azure Linux VM](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_virtual_machine)
+* [Azure Log Analytics Workspace](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/log_analytics_workspace)
+* [Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/overview?tabs=azure-vms)
+* [Azure Automation Account Runbook](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/automation_runbook)
+* [Programmatical Management of Updates](https://learn.microsoft.com/en-us/azure/update-center/manage-vms-programmatically?tabs=cli%2Crest)
 
 ## Author Information
 
-Francisco Mansilha Pena Galante (DI IT EH PT 4 2)
+Francisco Galante
