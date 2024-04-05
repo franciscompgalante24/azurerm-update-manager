@@ -44,6 +44,9 @@ resource "azurerm_virtual_machine_extension" "ama_linux" {
   type                       = var.vm_extension.type
   type_handler_version       = var.vm_extension.type_handler_version
   auto_upgrade_minor_version = true
+  depends_on = [azurerm_linux_virtual_machine.linux_vm,
+      azurerm_log_analytics_workspace.log_analytics,
+      azurerm_monitor_data_collection_rule.dcr]
 }
 
 resource "azurerm_monitor_data_collection_rule_association" "dcr_association" {
