@@ -88,7 +88,7 @@ variable "automation_schedule" {
 }
 
 variable "public_network_access_enabled" {
-  description = "Whether public network access is allowed for the automation account. Defaults to false to go according to siemens policy"
+  description = "Whether public network access is allowed for the automation account. Defaults to false."
   type        = bool
   default     = false
 }
