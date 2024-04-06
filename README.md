@@ -102,6 +102,13 @@ automation_schedule = {
 }
 ```
 
+## Run Terraform Scripts
+To use the scripts of this repository, perform the following terraform commands:
+```
+terraform init
+terraform plan -var-file="<YOUR-TERRAFORM>.tfvars"
+```
+
 ## Notes and Possible Errors
 
 During the processes of Update Assessment and Update Deployment and if you have an Ubuntu VM, there is a potential for encountering an error message, 
